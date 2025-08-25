@@ -55,6 +55,13 @@ fn main() {
     let mut mouse_locked = false;
     rl.set_mouse_cursor(raylib::consts::MouseCursor::MOUSE_CURSOR_ARROW);
 
+    // --- assets
+    let floor_tex = rl.load_texture(&thread, "assets/floor.png").unwrap();
+    let ceil_tex = rl.load_texture(&thread, "assets/ceiling.png").unwrap();
+    let menu_bg = rl.load_texture(&thread, "assets/menu_bg.png").unwrap();
+    let win_bg = rl.load_texture(&thread, "assets/win_bg.png").unwrap();
+    let screamer_tex = rl.load_texture(&thread, "assets/screamer.png").unwrap();
+
     while !rl.window_should_close() {
         let now = Instant::now();
         let _dt = now.duration_since(last_frame);
@@ -72,22 +79,40 @@ fn main() {
 
         match state {
             GameState::Menu => {
+                // --- inputs
+                let key_enter = rl.is_key_pressed(KeyboardKey::KEY_ENTER);
+                let key_l = rl.is_key_pressed(KeyboardKey::KEY_L);
+                let key_escape = rl.is_key_pressed(KeyboardKey::KEY_ESCAPE);
+
+                // --- dibujo
                 let mut d = rl.begin_drawing(&thread);
-                d.clear_background(Color::DARKBLUE);
-                d.draw_text("RAY CASTER", 40, 60, 60, Color::WHITE);
-                d.draw_text("ENTER: Jugar", 40, 140, 30, Color::RAYWHITE);
-                d.draw_text("L: Seleccionar nivel", 40, 180, 30, Color::RAYWHITE);
-                d.draw_text("ESC: Salir", 40, 220, 30, Color::RAYWHITE);
+                d.clear_background(Color::BLACK);
+                d.draw_texture(&menu_bg, 0, 0, Color::WHITE);
+                d.draw_text("RAY CASTER", 100, 100, 80, Color::YELLOW);
+                d.draw_text("ENTER: Jugar", 100, 300, 30, Color::WHITE);
+                d.draw_text("L: Seleccionar nivel", 100, 350, 30, Color::WHITE);
+                d.draw_text("ESC: Salir", 100, 400, 30, Color::WHITE);
                 drop(d);
 
-                if rl.is_key_pressed(KeyboardKey::KEY_ENTER) {
+                // --- lógica
+                if key_enter {
                     state = GameState::Playing;
                 }
-                if rl.is_key_pressed(KeyboardKey::KEY_L) {
+                if key_l {
                     state = GameState::LevelSelect;
+                }
+                if key_escape {
+                    break;
                 }
             }
             GameState::LevelSelect => {
+                // --- inputs
+                let key_one = rl.is_key_pressed(KeyboardKey::KEY_ONE);
+                let key_two = rl.is_key_pressed(KeyboardKey::KEY_TWO);
+                let key_enter = rl.is_key_pressed(KeyboardKey::KEY_ENTER);
+                let key_escape = rl.is_key_pressed(KeyboardKey::KEY_ESCAPE);
+
+                // --- dibujo
                 let mut d = rl.begin_drawing(&thread);
                 d.clear_background(Color::BLACK);
                 d.draw_text("Selecciona nivel (1 o 2)", 40, 60, 40, Color::RAYWHITE);
@@ -102,18 +127,19 @@ fn main() {
                 }
                 drop(d);
 
-                if rl.is_key_pressed(KeyboardKey::KEY_ONE) {
+                // --- lógica
+                if key_one {
                     current_level = 0;
                     maze = load_maze(level_files[current_level]);
                 }
-                if rl.is_key_pressed(KeyboardKey::KEY_TWO) {
+                if key_two {
                     current_level = 1;
                     maze = load_maze(level_files[current_level]);
                 }
-                if rl.is_key_pressed(KeyboardKey::KEY_ENTER) {
+                if key_enter {
                     state = GameState::Playing;
                 }
-                if rl.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
+                if key_escape {
                     state = GameState::Menu;
                 }
             }
@@ -122,18 +148,41 @@ fn main() {
                 let _moved = process_events(&mut player, &rl, &maze, BLOCK_SIZE, mouse_locked);
 
                 // render walls
-                crate::caster::render_world(&mut framebuffer, &maze, &player, BLOCK_SIZE);
+                crate::caster::render_world(
+                    &mut framebuffer,
+                    &maze,
+                    &player,
+                    BLOCK_SIZE,
+                );
 
-                // minimapa
-                crate::caster::render_minimap(&mut framebuffer, &maze, &player, BLOCK_SIZE);
-
-                // HUD
+                // --- inputs
                 let fps = rl.get_fps();
-                if let Ok(texture) = rl.load_texture_from_image(&thread, &framebuffer.color_buffer)
-                {
+
+                // --- dibujo
+                if let Ok(texture) = rl.load_texture_from_image(&thread, &framebuffer.color_buffer) {
                     let mut d = rl.begin_drawing(&thread);
-                    d.clear_background(Color::BLACK);
+
+                    // --- techo y suelo
+                    d.draw_texture(&ceil_tex, 0, 0, Color::WHITE);
+                    d.draw_texture(&floor_tex, 0, WINDOW_H/2, Color::WHITE);
+
+                    // --- laberinto (raycasting framebuffer)
                     d.draw_texture(&texture, 0, 0, Color::WHITE);
+
+                    // --- screamer (si está en celda 's')
+                    let i = (player.pos.x as usize / BLOCK_SIZE).min(maze[0].len() - 1);
+                    let j = (player.pos.y as usize / BLOCK_SIZE).min(maze.len() - 1);
+                    if maze[j][i] == 's' {
+                        d.draw_texture_ex(
+                            &screamer_tex,
+                            Vector2::new((WINDOW_W/2 - 200) as f32, (WINDOW_H/2 - 200) as f32),
+                            0.0,
+                            2.0,
+                            Color::WHITE,
+                        );
+                    }
+
+                    // --- HUD
                     d.draw_text(&format!("FPS: {}", fps), 10, 10, 20, Color::RAYWHITE);
                 }
 
@@ -145,19 +194,27 @@ fn main() {
                 }
             }
             GameState::Win => {
+                // --- inputs
+                let key_enter = rl.is_key_pressed(KeyboardKey::KEY_ENTER);
+                let key_l = rl.is_key_pressed(KeyboardKey::KEY_L);
+                let key_escape = rl.is_key_pressed(KeyboardKey::KEY_ESCAPE);
+
+                // --- dibujo
                 let mut d = rl.begin_drawing(&thread);
                 d.clear_background(Color::DARKGREEN);
-                d.draw_text("¡Nivel completado!", 40, 60, 60, Color::WHITE);
-                d.draw_text("ENTER: Rejugar | L: Niveles | ESC: Menú", 40, 140, 24, Color::RAYWHITE);
+                d.draw_texture(&win_bg, 0, 0, Color::WHITE);
+                d.draw_text("¡Nivel completado!", 80, 100, 70, Color::WHITE);
+                d.draw_text("ENTER: Rejugar | L: Niveles | ESC: Menú", 80, 300, 30, Color::WHITE);
                 drop(d);
 
-                if rl.is_key_pressed(KeyboardKey::KEY_ENTER) {
+                // --- lógica
+                if key_enter {
                     state = GameState::Playing;
                 }
-                if rl.is_key_pressed(KeyboardKey::KEY_L) {
+                if key_l {
                     state = GameState::LevelSelect;
                 }
-                if rl.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
+                if key_escape {
                     state = GameState::Menu;
                 }
             }

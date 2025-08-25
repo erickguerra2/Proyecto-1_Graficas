@@ -32,7 +32,12 @@ pub fn cast_ray(
     }
 }
 
-pub fn render_world(framebuffer: &mut Framebuffer, maze: &Maze, player: &Player, block_size: usize) {
+pub fn render_world(
+    framebuffer: &mut Framebuffer,
+    maze: &Maze,
+    player: &Player,
+    block_size: usize,
+) {
     let num_rays = framebuffer.width;
     let hh = framebuffer.height as f32 / 2.0;
 
@@ -55,43 +60,12 @@ pub fn render_world(framebuffer: &mut Framebuffer, maze: &Maze, player: &Player,
             '-' => Color::VIOLET,
             '|' => Color::DARKPURPLE,
             'g' => Color::GREEN,
+            's' => Color::RED, // screamer marker
             _ => Color::WHITE,
         };
         framebuffer.set_current_color(col);
         for y in top..=bottom {
             framebuffer.set_pixel(i, y as u32);
-        }
-    }
-}
-
-pub fn render_minimap(framebuffer: &mut Framebuffer, maze: &Maze, player: &Player, block_size: usize) {
-    let mini_block = 10usize;
-    let offset_x = 10usize;
-    let offset_y = 10usize;
-
-    for (j, row) in maze.iter().enumerate() {
-        for (i, &cell) in row.iter().enumerate() {
-            if cell != ' ' {
-                framebuffer.set_current_color(Color::GRAY);
-                for x in 0..mini_block {
-                    for y in 0..mini_block {
-                        framebuffer.set_pixel(
-                            (offset_x + i * mini_block + x) as u32,
-                            (offset_y + j * mini_block + y) as u32,
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    // jugador
-    framebuffer.set_current_color(Color::YELLOW);
-    let px = (player.pos.x as usize / block_size) * mini_block + offset_x + mini_block / 2;
-    let py = (player.pos.y as usize / block_size) * mini_block + offset_y + mini_block / 2;
-    for x in px.saturating_sub(2)..=px + 2 {
-        for y in py.saturating_sub(2)..=py + 2 {
-            framebuffer.set_pixel(x as u32, y as u32);
         }
     }
 }

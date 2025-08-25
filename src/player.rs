@@ -1,3 +1,4 @@
+// src/player.rs
 use raylib::prelude::*;
 use std::f32::consts::PI;
 use crate::maze::Maze;
