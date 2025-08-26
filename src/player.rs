@@ -21,14 +21,14 @@ pub fn process_events(
     let mut moved = false;
 
     if rl.is_key_down(KeyboardKey::KEY_LEFT) {
-        player.a += ROT_SPEED;
+        player.a -= ROT_SPEED;
     }
     if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-        player.a -= ROT_SPEED;
+        player.a += ROT_SPEED;
     }
     if mouse_locked {
         let md = rl.get_mouse_delta();
-        player.a -= md.x * 0.003;
+        player.a += md.x * 0.003;
     }
 
     let mut dx = 0.0;

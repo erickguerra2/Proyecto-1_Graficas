@@ -1,7 +1,13 @@
 use raylib::prelude::*;
-use crate::framebuffer::Framebuffer;
 use crate::maze::Maze;
 use crate::player::Player;
+
+pub struct WallSlice {
+    pub screen_x: i32,
+    pub top: i32,
+    pub bottom: i32,
+    pub tex_x: f32,
+}
 
 pub struct Intersect {
     pub distance: f32,
@@ -28,44 +34,48 @@ pub fn cast_ray(
                 impact: maze[j][i],
             };
         }
-        d += 5.0;
+        d += 2.0;
     }
 }
 
-pub fn render_world(
-    framebuffer: &mut Framebuffer,
+/// Calcula todas las columnas de pared visibles
+pub fn compute_wall_slices(
     maze: &Maze,
     player: &Player,
     block_size: usize,
-) {
-    let num_rays = framebuffer.width;
-    let hh = framebuffer.height as f32 / 2.0;
+    screen_w: i32,
+    screen_h: i32,
+) -> Vec<WallSlice> {
+    let mut slices = Vec::new();
+    let hh = screen_h as f32 / 2.0;
 
-    for i in 0..num_rays {
-        let t = i as f32 / num_rays as f32;
+    for i in 0..screen_w {
+        let t = i as f32 / screen_w as f32;
         let a = player.a - (player.fov / 2.0) + (player.fov * t);
         let intersect = cast_ray(maze, player, a, block_size);
 
         let corrected = intersect.distance * (player.a - a).cos().abs().max(0.0001);
-        let dpp = 70.0;
+        let dpp = 150.0;
         let h = (hh / corrected) * dpp;
         let top = (hh - h / 2.0).max(0.0) as i32;
-        let bottom = (hh + h / 2.0).min(framebuffer.height as f32 - 1.0) as i32;
+        let bottom = (hh + h / 2.0).min(screen_h as f32 - 1.0) as i32;
 
-        let col = match intersect.impact {
-            '1' => Color::MAROON,
-            '2' => Color::ORANGE,
-            '3' => Color::DARKBLUE,
-            '+' => Color::BLUEVIOLET,
-            '-' => Color::VIOLET,
-            '|' => Color::DARKPURPLE,
-            'g' => Color::GREEN,
-            's' => Color::RED, // screamer marker
-            _ => Color::WHITE,
+        let hit_x = player.pos.x + corrected * a.cos();
+        let hit_y = player.pos.y + corrected * a.sin();
+
+        let tex_x = if (hit_x as i32 % block_size as i32) < (hit_y as i32 % block_size as i32) {
+            (hit_x as i32 % block_size as i32) as f32
+        } else {
+            (hit_y as i32 % block_size as i32) as f32
         };
-        framebuffer.set_current_color(col);
-        for y in top..=bottom {
-            framebuffer.set_pixel(i, y as u32);
-        }
+        let tex_x = tex_x / block_size as f32;
+
+        slices.push(WallSlice {
+            screen_x: i,
+            top,
+            bottom,
+            tex_x,
+        });
     }
+    slices
 }
